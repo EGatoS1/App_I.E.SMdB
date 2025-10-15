@@ -8,12 +8,53 @@
     tools:context=".MainActivity">
 
     <TextView
+        android:id="@+id/tvUsuario"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!"
+        android:text="Usuario"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <EditText
+        android:id="@+id/etUsuario"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/tvUsuario"
+        app:layout_constraintStart_toStartOf="@+id/main"
+        app:layout_constraintEnd_toEndOf="@+id/main"
+        />
+
+    <TextView
+        android:id="@+id/tvContra"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Contraseña"
+        android:layout_marginTop="20dp"
+        app:layout_constraintTop_toBottomOf="@+id/etUsuario"
+        app:layout_constraintStart_toStartOf="@+id/main"
+        app:layout_constraintEnd_toEndOf="@+id/main"
+
+       />
+
+    <EditText
+        android:id="@+id/etContra"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/tvContra"
+        app:layout_constraintStart_toStartOf="@+id/main"
+        app:layout_constraintEnd_toEndOf="@+id/main"
+        />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        app:layout_constraintTop_toBottomOf="@+id/etContra"
+        app:layout_constraintStart_toStartOf="@+id/main"
+        app:layout_constraintEnd_toEndOf="@+id/main"
+        android:text="Iniciar Sesión"
+        />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
