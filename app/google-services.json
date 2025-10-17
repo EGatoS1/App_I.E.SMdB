@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "890290193387",
+    "project_id": "appcolegio-4af9b",
+    "storage_bucket": "appcolegio-4af9b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:890290193387:android:7bcabb8890897e5a06cfae",
+        "android_client_info": {
+          "package_name": "com.example.app_iesmdb"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC6Ue8xLLOP9JFSHSQz0iYssn1GNVDYK_o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

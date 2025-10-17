@@ -1,3 +1,19 @@
 <resources>
-    <string name="app_name">App_I.E.SMdB</string>
+    <string name="app_name">Control de Asistencia</string>
+    <string name="login_title">Control de Asistencia</string>
+    <string name="login_subtitle">Iniciar Sesión</string>
+    <string name="hint_usuario">Usuario</string>
+    <string name="hint_contrasena">Contraseña</string>
+    <string name="btn_acceder">Acceder</string>
+    <string name="msg_campos_vacios">Completa usuario y contraseña</string>
+    <string name="logo_colegio">Logo del colegio</string>
+    <string name="menu_title">Menú</string>
+    <string name="item_credenciales">Credenciales</string>
+    <string name="item_listado_grado">Listado por Grado</string>
+    <string name="item_dashboard">Dashboard de Asistencia</string>
+
+    <string name="tab_credenciales">Credenciales</string>
+    <string name="tab_inicio">Inicio</string>
+    <string name="tab_cerrar_sesion">Cerrar sesión</string>
+
 </resources>
