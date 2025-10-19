@@ -19,6 +19,17 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_login)
+        
+        // Ir directo al flujo del Director para probar UI sin login
+        if (resources.getBoolean(R.bool.auth_bypass)) {
+
+            val i = Intent(this, MainActivity::class.java)
+                .putExtra("dest_res_id", R.id.directorHomeFragment) // opcional: a qué pantalla ir
+            startActivity(i)
+            finish()
+            return
+        }
+
 
         // Mantén tu manejo de insets
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.login)) { v, insets ->

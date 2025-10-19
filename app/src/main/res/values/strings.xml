@@ -16,4 +16,17 @@
     <string name="tab_inicio">Inicio</string>
     <string name="tab_cerrar_sesion">Cerrar sesión</string>
 
+
+    <string name="title_grades">Listado por Grado</string>
+    <string name="cd_icon_school">Icono de grado</string>
+    <string name="cd_chevron">Abrir</string>
+
+    <string name="grade_1">Primer grado</string>
+    <string name="grade_2">Segundo grado</string>
+    <string name="grade_3">Tercer grado</string>
+    <string name="grade_4">Cuarto grado</string>
+    <string name="grade_5">Quinto grado</string>
+    <string name="grade_6">Sexto grado</string>
+
+
 </resources>

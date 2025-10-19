@@ -23,4 +23,15 @@
         android:id="@+id/dashboardFragment"
         android:name="com.example.app_iesmdb.DashboardFragment"
         android:label="Dashboard de Asistencia" />
+
+    <fragment
+        android:id="@+id/gradeDetailFragment"
+        android:name="com.example.app_iesmdb.GradeDetailFragment"
+        android:label="Detalle de Asistencia">
+        <argument
+            android:name="gradeName"
+            app:argType="string"
+            android:defaultValue="Quinto Grado"/>
+    </fragment>
+
 </navigation>
