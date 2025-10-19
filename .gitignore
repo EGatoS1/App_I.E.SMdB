@@ -13,3 +13,12 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+activity_scanner.xml
+ScannerActivity.kt
+google-services.json
+.idea/deviceManager.xml
+
+.idea/codeStyles/
+.idea/deploymentTargetSelector.xml
+

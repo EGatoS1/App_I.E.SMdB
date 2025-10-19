@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:background="#FAFAFA">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <EditText
+            android:id="@+id/etId"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="ID del estudiante"
+            android:inputType="text" />
+
+        <EditText
+            android:id="@+id/etNombre"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Nombre completo"
+            android:inputType="text" />
+
+        <EditText
+            android:id="@+id/etApellidos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Apellidos Completos"
+            android:inputType="text" />
+
+        <EditText
+            android:id="@+id/etGrado"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Grado o sección"
+            android:inputType="text" />
+
+        <Button
+            android:id="@+id/btnGenerar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Generar QR"
+            android:layout_marginTop="16dp" />
+
+        <ImageView
+            android:id="@+id/imgQr"
+            android:layout_width="250dp"
+            android:layout_height="250dp"
+            android:layout_marginTop="20dp"
+            android:contentDescription="QR generado" />
+
+        <TextView
+            android:id="@+id/tvResultado"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:text="Resultado"
+            android:textSize="18sp"
+            />
+
+        <Button
+            android:id="@+id/btnEscanear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📷 Ir al Escáner"
+            android:layout_marginTop="30dp" />
+    </LinearLayout>
+</ScrollView>
