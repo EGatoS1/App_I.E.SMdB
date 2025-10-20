@@ -10,4 +10,14 @@
     <color name="bottom_nav_text_inactive">#6B7280</color>
     <color name="bottom_nav_text_active">#137FEC</color>
 
+    <color name="chip_puntual_bg">#E6F4EA</color>   <!-- verde claro -->
+    <color name="chip_puntual_text">#0F9D58</color>
+
+    <color name="chip_tarde_bg">#FFF8E1</color>     <!-- amarillo claro -->
+    <color name="chip_tarde_text">#F9A825</color>
+
+    <color name="chip_falta_bg">#FFEBEE</color>     <!-- rojo claro -->
+    <color name="chip_falta_text">#D32F2F</color>
+
+
 </resources>

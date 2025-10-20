@@ -12,12 +12,12 @@
 
     <fragment
         android:id="@+id/teacherCredentialsFragment"
-        android:name="com.example.app_iesmdb.teacher.TeacherCredentialsFragment"
+        android:name="com.example.app_iesmdb.TeacherCredentialsFragment"
         tools:layout="@layout/fragment_teacher_credentials" />
 
     <fragment
         android:id="@+id/teacherStudentsFragment"
-        android:name="com.example.app_iesmdb.teacher.TeacherStudentsFragment"
+        android:name="com.example.app_iesmdb.TeacherStudentsFragment"
         tools:layout="@layout/fragment_teacher_students" />
 
     <fragment

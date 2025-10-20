@@ -21,6 +21,33 @@ class MainTeacherActivity : AppCompatActivity(R.layout.activity_main_teacher) {
         val bottom = findViewById<BottomNavigationView>(R.id.bottomBarTeacher)
         bottom.setupWithNavController(navController)
 
+        bottom.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.action_logout_teacher -> {
+                    FirebaseAuth.getInstance().signOut()
+                    startActivity(Intent(this, LoginActivity::class.java))
+                    finish()
+                    true
+                }
+                // 👇 Hace que “Inicio” siempre regrese al menú del Tutor
+                R.id.teacherHomeFragment -> {
+                    navController.popBackStack(R.id.teacherHomeFragment, false)
+                    true
+                }
+                else -> {
+                    NavigationUI.onNavDestinationSelected(item, navController)
+                }
+            }
+        }
+
+// (Opcional) si re-tocas Inicio, también vuelve al menú
+        bottom.setOnItemReselectedListener { item ->
+            if (item.itemId == R.id.teacherHomeFragment) {
+                navController.popBackStack(R.id.teacherHomeFragment, false)
+            }
+        }
+
+
         // Manejo de logout (item no asociado a un destino)
         bottom.setOnItemSelectedListener { item ->
             if (item.itemId == R.id.action_logout_teacher) {
