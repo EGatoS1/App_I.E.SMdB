@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_teacher"
+    app:startDestination="@id/teacherHomeFragment">
+
+    <fragment
+        android:id="@+id/teacherHomeFragment"
+        android:name="com.example.app_iesmdb.teacher.TeacherHomeFragment"
+        tools:layout="@layout/fragment_teacher_home" />
+
+    <fragment
+        android:id="@+id/teacherCredentialsFragment"
+        android:name="com.example.app_iesmdb.teacher.TeacherCredentialsFragment"
+        tools:layout="@layout/fragment_teacher_credentials" />
+
+    <fragment
+        android:id="@+id/teacherStudentsFragment"
+        android:name="com.example.app_iesmdb.teacher.TeacherStudentsFragment"
+        tools:layout="@layout/fragment_teacher_students" />
+
+    <fragment
+        android:id="@+id/teacherReportsFragment"
+        android:name="com.example.app_iesmdb.teacher.TeacherReportsFragment"
+        tools:layout="@layout/fragment_teacher_reports" />
+
+</navigation>

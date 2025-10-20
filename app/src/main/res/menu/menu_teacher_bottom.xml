@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/nav_credentials"
+        android:id="@+id/teacherCredentialsFragment"
         android:title="Credenciales"
-        android:icon="@drawable/ic_person_24" />
+        android:icon="@drawable/ic_key_24" />
     <item
-        android:id="@+id/nav_home"
+        android:id="@+id/teacherHomeFragment"
         android:title="Inicio"
         android:icon="@drawable/ic_home_24" />
     <item
-        android:id="@+id/action_logout_director"
+        android:id="@+id/action_logout_teacher"
         android:title="Cerrar sesión"
         android:icon="@drawable/ic_logout_24" />
 </menu>

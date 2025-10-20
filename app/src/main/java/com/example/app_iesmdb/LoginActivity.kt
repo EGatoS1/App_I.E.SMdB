@@ -2,6 +2,7 @@ package com.example.app_iesmdb
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -10,10 +11,13 @@ import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginActivity : AppCompatActivity() {
 
     private val auth by lazy { FirebaseAuth.getInstance() }
+    private val db by lazy { FirebaseFirestore.getInstance() }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,8 +60,40 @@ class LoginActivity : AppCompatActivity() {
             auth.signInWithEmailAndPassword(email, pass)
                 .addOnSuccessListener {
                     // Login OK: redirige al MainActivity creado por defecto
-                    startActivity(Intent(this, MainActivity::class.java))
-                    finish()
+                    // Login OK: ahora decidimos por rol en Firestore
+                    val uid = it.user!!.uid
+                    db.collection("users").document(uid).get()
+                        .addOnSuccessListener { doc ->
+                            // Acepta 'role' o 'rol' según como lo hayan guardado
+                            val role = (doc.getString("role") ?: doc.getString("rol") ?: "sin_rol").lowercase()
+                            Log.d("LOGIN_DEBUG", "Rol detectado: $role")
+
+                            Toast.makeText(this, "Rol detectado: $role", Toast.LENGTH_SHORT).show()
+
+                            when (role) {
+                                "director", "administrativo" -> {
+                                    startActivity(Intent(this, MainActivity::class.java))
+                                }
+                                "tutor", "profesor" -> {
+                                    val grado = doc.getString("grado") ?: ""
+                                    startActivity(Intent(this, MainTeacherActivity::class.java).apply {
+                                        putExtra("GRADE", grado)
+                                    })
+                                }
+                                "auxiliar" -> {
+                                    startActivity(Intent(this, MainAuxiliarActivity::class.java))
+                                }
+                                else -> {
+                                    // Fallback seguro
+                                    startActivity(Intent(this, MainActivity::class.java))
+                                }
+                            }
+                            finish()
+                        }
+                        .addOnFailureListener { e ->
+                            toast(e.message ?: "No se pudo leer el rol del usuario")
+                        }
+
                 }
                 .addOnFailureListener { e ->
                     toast(e.message ?: "Error al iniciar sesión")
