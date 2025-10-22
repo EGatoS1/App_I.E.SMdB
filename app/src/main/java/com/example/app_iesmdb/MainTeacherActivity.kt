@@ -29,7 +29,7 @@ class MainTeacherActivity : AppCompatActivity(R.layout.activity_main_teacher) {
                     finish()
                     true
                 }
-                // 👇 Hace que “Inicio” siempre regrese al menú del Tutor
+                // Hace que “Inicio” siempre regrese al menú del Tutor
                 R.id.teacherHomeFragment -> {
                     navController.popBackStack(R.id.teacherHomeFragment, false)
                     true

@@ -11,10 +11,13 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
+import java.text.Normalizer
 import java.text.SimpleDateFormat
-import java.util.Locale
+import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 
 class TeacherStudentsFragment : Fragment(R.layout.fragment_teacher_students) {
 
@@ -27,12 +30,13 @@ class TeacherStudentsFragment : Fragment(R.layout.fragment_teacher_students) {
     private lateinit var tvT: TextView
     private lateinit var tvF: TextView
 
-    private fun normalize(s: String): String {
-        val tmp = java.text.Normalizer.normalize(s.lowercase(), java.text.Normalizer.Form.NFD)
-        return tmp.replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
-    }
+    // selector de fecha
+    private lateinit var tvDate: TextView
+    private lateinit var btnPrev: TextView
+    private lateinit var btnNext: TextView
+    private val cal = Calendar.getInstance()
 
-    // Lista completa y filtrada
+    // Lista completa (para filtros)
     private var fullList: List<TeacherStudentUI> = emptyList()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -43,6 +47,10 @@ class TeacherStudentsFragment : Fragment(R.layout.fragment_teacher_students) {
         tvP = view.findViewById(R.id.tvCountPresent)
         tvT = view.findViewById(R.id.tvCountLate)
         tvF = view.findViewById(R.id.tvCountAbsent)
+
+        tvDate = view.findViewById(R.id.tvSelectedDate)
+        btnPrev = view.findViewById(R.id.btnPrevDay)
+        btnNext = view.findViewById(R.id.btnNextDay)
 
         rv.layoutManager = LinearLayoutManager(requireContext())
         adapter = TeacherStudentsAdapter()
@@ -60,38 +68,58 @@ class TeacherStudentsFragment : Fragment(R.layout.fragment_teacher_students) {
             return
         }
 
-        // 2) MOCK: si el flag está activo, carga datos locales y sal
+        // 2) Modo demo (mock)
         val useMock = resources.getBoolean(R.bool.use_mock_students)
         if (useMock) {
+            updateDateLabel()
             fullList = mockStudentsData()
             adapter.submitList(fullList)
             updateCounters(fullList)
-            // filtro en vivo también aplica al mock
             attachSearchFilter()
             return
         }
 
-        // 3) Cargar estudiantes + asistencias de HOY (desde Firestore)
-        loadStudentsAndTodayAttendance(grade)
+        // 3) Carga real para la fecha seleccionada
+        updateDateLabel()
+        reloadForSelectedDate(grade)
 
-        // 4) Filtro por código en vivo
+        // 4) Filtro en vivo (código o nombre)
         attachSearchFilter()
+
+        // 5) Navegación por fecha
+        btnPrev.setOnClickListener {
+            cal.add(Calendar.DAY_OF_MONTH, -1)
+            updateDateLabel()
+            reloadForSelectedDate(grade)
+        }
+        btnNext.setOnClickListener {
+            cal.add(Calendar.DAY_OF_MONTH, +1)
+            updateDateLabel()
+            reloadForSelectedDate(grade)
+        }
     }
 
-    private fun attachSearchFilter() {
-        etSearch.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                applyFilter(s?.toString().orEmpty())
-            }
-            override fun afterTextChanged(s: Editable?) {}
-        })
+    // ====================== FECHA ======================
+
+    private fun selectedSpanishKey(): String {
+        val fmt = SimpleDateFormat("d 'de' MMMM 'de' yyyy", Locale("es","PE"))
+        return fmt.format(cal.time) // p.ej. "19 de octubre de 2025"
     }
 
-    private fun loadStudentsAndTodayAttendance(grade: String) {
+    private fun updateDateLabel() {
+        tvDate.text = selectedSpanishKey()
+    }
+
+    private fun reloadForSelectedDate(grade: String) {
+        loadStudentsAndDateAttendance(grade, cal)
+    }
+
+    // ====================== CARGA DE DATOS ======================
+
+    private fun loadStudentsAndDateAttendance(grade: String, selectedCal: Calendar) {
         // a) Estudiantes del grado
         db.collection("estudiantes")
-            .whereEqualTo("grado", grade)   // suponemos grado como String
+            .whereEqualTo("grado", grade)   // se asume string "1".."6"
             .get()
             .addOnSuccessListener { qs ->
                 val students = qs.documents.map { d ->
@@ -102,18 +130,17 @@ class TeacherStudentsFragment : Fragment(R.layout.fragment_teacher_students) {
                     code to TeacherStudentUI(code, name, "—")
                 }.toMap().toMutableMap()
 
-                // b) Asistencias del grado → filtrar HOY en cliente
+                // b) Asistencias del grado → filtramos por el DÍA SELECCIONADO
                 db.collection("asistencias_globales")
                     .whereEqualTo("grado", grade)
                     .get()
                     .addOnSuccessListener { attSnap ->
-                        val todayKey = todaySpanishKey()
                         attSnap.documents.forEach { d ->
-                            val fechaStr = d.get("fecha")?.toString() ?: ""
-                            if (isSameDaySpanish(fechaStr, todayKey)) {
+                            val fechaAny = d.get("fecha") // puede ser String o Timestamp
+                            if (isSameDay(fechaAny, selectedCal)) {
                                 val code = d.getString("id_estudiante") ?: return@forEach
-                                val estado = d.getString("estado") ?: "—"
-                                students[code] = students[code]?.copy(status = estado) ?: return@forEach
+                                val estadoCanon = canonicalStatus(d.getString("estado"))
+                                students[code] = students[code]?.copy(status = estadoCanon) ?: return@forEach
                             }
                         }
 
@@ -123,7 +150,6 @@ class TeacherStudentsFragment : Fragment(R.layout.fragment_teacher_students) {
                     }
                     .addOnFailureListener { e ->
                         Toast.makeText(requireContext(), "Error asistencias: ${e.message}", Toast.LENGTH_SHORT).show()
-                        // Muestra al menos la lista de estudiantes
                         fullList = students.values.sortedBy { it.code }
                         adapter.submitList(fullList)
                         updateCounters(fullList)
@@ -131,11 +157,55 @@ class TeacherStudentsFragment : Fragment(R.layout.fragment_teacher_students) {
             }
             .addOnFailureListener { e ->
                 Toast.makeText(requireContext(), "Error estudiantes: ${e.message}", Toast.LENGTH_SHORT).show()
-                // Fallback a MOCK si hay permisos insuficientes
+                // Fallback a demo para poder ver UI
                 fullList = mockStudentsData()
                 adapter.submitList(fullList)
                 updateCounters(fullList)
             }
+    }
+
+    // ====================== COMPARACIÓN DE FECHA ROBUSTA ======================
+
+    /** Acepta Timestamp o String local como "19 de octubre de 2025, 12:53:03 a.m. UTC-5" */
+    private fun isSameDay(field: Any?, selectedCal: Calendar): Boolean {
+        try {
+            when (field) {
+                is Timestamp -> {
+                    val cal2 = Calendar.getInstance()
+                    cal2.time = field.toDate()
+                    return cal2.get(Calendar.YEAR) == selectedCal.get(Calendar.YEAR) &&
+                            cal2.get(Calendar.DAY_OF_YEAR) == selectedCal.get(Calendar.DAY_OF_YEAR)
+                }
+                is Date -> {
+                    val cal2 = Calendar.getInstance()
+                    cal2.time = field
+                    return cal2.get(Calendar.YEAR) == selectedCal.get(Calendar.YEAR) &&
+                            cal2.get(Calendar.DAY_OF_YEAR) == selectedCal.get(Calendar.DAY_OF_YEAR)
+                }
+                is String -> {
+                    // Nos quedamos con el “día en español” y comparamos con startsWith para tolerancia
+                    val dayPart = field.substringBefore(",").trim().lowercase()
+                    val sel = SimpleDateFormat("d 'de' MMMM 'de' yyyy", Locale("es","PE"))
+                        .format(selectedCal.time)
+                        .lowercase()
+                    return dayPart == sel || field.trim().lowercase().startsWith(sel)
+                }
+                else -> return false
+            }
+        } catch (_: Exception) { }
+        return false
+    }
+
+    // ====================== BÚSQUEDA Y CONTADORES ======================
+
+    private fun attachSearchFilter() {
+        etSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                applyFilter(s?.toString().orEmpty())
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
     }
 
     private fun applyFilter(query: String) {
@@ -149,7 +219,6 @@ class TeacherStudentsFragment : Fragment(R.layout.fragment_teacher_students) {
         updateCounters(filtered)
     }
 
-
     private fun updateCounters(list: List<TeacherStudentUI>) {
         val p = list.count { it.status.equals("puntual", true) }
         val t = list.count { it.status.equals("tarde", true) }
@@ -159,30 +228,25 @@ class TeacherStudentsFragment : Fragment(R.layout.fragment_teacher_students) {
         tvF.text = f.toString()
     }
 
+    // ====================== HELPERS ======================
+
     private fun canonicalStatus(raw: String?): String {
         val r = (raw ?: "—").trim().lowercase()
-
-        // Diccionario de sinónimos → valor canónico
         val map = mapOf(
-            // puntual
-            "puntual" to "puntual",
-            "presente" to "puntual",
-            "present" to "puntual",
-            "on_time" to "puntual",
-
-            // tarde
-            "tarde" to "tarde",
-            "tardanza" to "tarde",
-            "late" to "tarde",
-
-            // falta
-            "falta" to "falta",
-            "ausente" to "falta",
-            "absent" to "falta"
+            // Puntual
+            "puntual" to "puntual", "presente" to "puntual", "present" to "puntual", "on_time" to "puntual",
+            // Tarde
+            "tarde" to "tarde", "tardanza" to "tarde", "late" to "tarde",
+            // Falta
+            "falta" to "falta", "ausente" to "falta", "absent" to "falta"
         )
         return map[r] ?: "—"
     }
 
+    private fun normalize(s: String): String {
+        val tmp = Normalizer.normalize(s.lowercase(), Normalizer.Form.NFD)
+        return tmp.replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+    }
 
     // --- MOCK para modo demo ---
     private fun mockStudentsData() = listOf(
@@ -192,17 +256,4 @@ class TeacherStudentsFragment : Fragment(R.layout.fragment_teacher_students) {
         TeacherStudentUI("20230004", "Quispe, Rocío", "puntual"),
         TeacherStudentUI("20230005", "Torres, Diego", "puntual"),
     )
-
-
-    // --- Utilidades de fecha en español (para tu formato actual) ---
-    private fun todaySpanishKey(): String {
-        val fmt = SimpleDateFormat("d 'de' MMMM 'de' yyyy", Locale("es", "PE"))
-        return fmt.format(Date()) // ej: "20 de octubre de 2025"
-    }
-
-    /** Ej: "19 de octubre de 2025, 12:53:03 a.m. UTC-5" → compara el día previo a la coma */
-    private fun isSameDaySpanish(fechaStr: String, todayKey: String): Boolean {
-        val dayPart = fechaStr.substringBefore(",").trim()
-        return dayPart.equals(todayKey, ignoreCase = true)
-    }
 }

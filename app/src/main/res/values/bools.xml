@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <bool name="auth_bypass">false</bool>
-    <bool name="use_mock_students">true</bool>
+    <bool name="use_mock_students">false</bool>
 </resources>
 
 

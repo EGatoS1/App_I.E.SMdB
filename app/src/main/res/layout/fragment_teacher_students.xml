@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Contadores del día -->
+    <!-- Contadores del día seleccionado -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -92,12 +92,51 @@
 
     </LinearLayout>
 
-    <!-- Buscador por código -->
+    <!-- Selector de fecha (‹ ›) -->
+    <LinearLayout
+        android:id="@+id/rowDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="8dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
+
+        <TextView
+            android:id="@+id/btnPrevDay"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="‹"
+            android:textSize="22sp" />
+
+        <TextView
+            android:id="@+id/tvSelectedDate"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:text="15 de julio de 2024" />
+
+        <TextView
+            android:id="@+id/btnNextDay"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text="›"
+            android:textSize="22sp" />
+    </LinearLayout>
+
+    <!-- Buscador por código o nombre -->
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Buscar por código"
-        android:layout_marginTop="12dp">
+        android:hint="Buscar por código o nombre"
+        android:layout_marginTop="6dp">
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etSearchCode"
             android:layout_width="match_parent"
