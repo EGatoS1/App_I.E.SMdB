@@ -13,6 +13,7 @@
         android:weightSum="3"
         android:orientation="horizontal">
 
+        <!-- Asistentes (VERDE) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -20,25 +21,31 @@
             android:layout_marginEnd="8dp"
             app:cardCornerRadius="12dp"
             app:cardUseCompatPadding="true">
+
             <LinearLayout
-                android:padding="12dp"
-                android:orientation="vertical"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:background="@drawable/bg_kpi_green">
+
                 <TextView
                     android:text="Asistentes"
                     android:textStyle="bold"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"/>
+
                 <TextView
                     android:id="@+id/tvCountPresent"
                     android:text="0"
                     android:textSize="18sp"
+                    android:textStyle="bold"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Tardanzas (AMARILLO) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -46,51 +53,63 @@
             android:layout_marginEnd="8dp"
             app:cardCornerRadius="12dp"
             app:cardUseCompatPadding="true">
+
             <LinearLayout
-                android:padding="12dp"
-                android:orientation="vertical"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:background="@drawable/bg_kpi_yellow">
+
                 <TextView
                     android:text="Tardanzas"
                     android:textStyle="bold"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"/>
+
                 <TextView
                     android:id="@+id/tvCountLate"
                     android:text="0"
                     android:textSize="18sp"
+                    android:textStyle="bold"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Ausentes (ROJO) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             app:cardCornerRadius="12dp"
             app:cardUseCompatPadding="true">
+
             <LinearLayout
-                android:padding="12dp"
-                android:orientation="vertical"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:background="@drawable/bg_kpi_red">
+
                 <TextView
                     android:text="Ausentes"
                     android:textStyle="bold"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"/>
+
                 <TextView
                     android:id="@+id/tvCountAbsent"
                     android:text="0"
                     android:textSize="18sp"
+                    android:textStyle="bold"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
+
 
     <!-- Selector de fecha (‹ ›) -->
     <LinearLayout

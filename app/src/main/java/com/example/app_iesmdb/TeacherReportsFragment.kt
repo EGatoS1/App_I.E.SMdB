@@ -11,17 +11,13 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.app_iesmdb.R
-import com.example.app_iesmdb.databinding.FragmentTeacherReportsBinding
-
-import com.example.app_iesmdb.attendance.AttendanceAdapter
 import com.example.app_iesmdb.attendance.Attendance
+import com.example.app_iesmdb.attendance.AttendanceAdapter
 import com.example.app_iesmdb.attendance.Status
-
+import com.example.app_iesmdb.databinding.FragmentTeacherReportsBinding
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -37,7 +33,7 @@ class TeacherReportsFragment : Fragment(R.layout.fragment_teacher_reports) {
 
     private lateinit var adapter: AttendanceAdapter
 
-    // Rango seleccionado
+    // Rango de fechas
     private var startDate: LocalDate = LocalDate.now().minusDays(14)
     private var endDate: LocalDate = LocalDate.now()
     private val zone: ZoneId = ZoneId.systemDefault()
@@ -46,8 +42,8 @@ class TeacherReportsFragment : Fragment(R.layout.fragment_teacher_reports) {
     // Firestore
     private val db by lazy { Firebase.firestore }
 
-    // Heurística simple para detectar "código"
-    private val codeRegex: Pattern = Pattern.compile("^[A-Za-z]?[0-9]{5,}$") // N00281581 o 20230001
+    // Heurística simple para detectar códigos (N00000001 o 20230001)
+    private val codeRegex: Pattern = Pattern.compile("^[A-Za-z]?[0-9]{5,}$")
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -59,13 +55,6 @@ class TeacherReportsFragment : Fragment(R.layout.fragment_teacher_reports) {
         binding.etStartDate.setOnClickListener { openDatePicker(isStart = true) }
         binding.etEndDate.setOnClickListener { openDatePicker(isStart = false) }
 
-        binding.etStudentCode.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                binding.btnConsultar.performClick()
-                true
-            } else false
-        }
-
         adapter = AttendanceAdapter(mutableListOf())
         binding.rvDetalle.layoutManager = LinearLayoutManager(requireContext())
         binding.rvDetalle.adapter = adapter
@@ -73,58 +62,93 @@ class TeacherReportsFragment : Fragment(R.layout.fragment_teacher_reports) {
             DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL)
         )
 
+        // Buscar al presionar "buscar" en el teclado
+        binding.etStudentCode.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                binding.btnConsultar.performClick()
+                true
+            } else false
+        }
+
         binding.btnConsultar.setOnClickListener {
-            // Ahora permitimos texto (código **o** nombre); fechas siguen siendo obligatorias
             if (startDate.isAfter(endDate)) {
                 Toast.makeText(requireContext(), "La fecha de inicio no puede ser mayor que la de fin.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            val text = binding.etStudentCode.text?.toString()?.trim().orEmpty()
-            if (text.isEmpty()) {
-                // Si no hay texto, pedimos uno porque necesitamos un estudiante específico
+
+            val input = binding.etStudentCode.text?.toString()?.trim().orEmpty()
+            if (input.isEmpty()) {
                 binding.etStudentCode.error = "Ingresa código o nombre/apellido"
                 binding.etStudentCode.requestFocus()
                 return@setOnClickListener
             }
 
-            resolveStudent(text) { code, display ->
+            val grade = getTutorGrade() ?: run {
+                Toast.makeText(requireContext(), "No se encontró el grado del tutor.", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+
+            resolveStudentWithinGrade(input, grade) { code, display ->
                 binding.tvReportFor.text = "Reporte para: $display"
                 loadAttendanceByCodeAndRange(code)
             }
         }
     }
 
+    /** Obtiene el grado del tutor desde SavedStateHandle o Intent */
+    private fun getTutorGrade(): String? {
+        val raw = findNavController().currentBackStackEntry?.savedStateHandle?.get<Any?>("GRADE")
+            ?: requireActivity().intent.getStringExtra("GRADE")
+
+        return when (raw) {
+            is String -> raw.trim()
+            is Number -> raw.toInt().toString()
+            else -> (raw?.toString()?.trim())
+        }?.takeIf { it.isNotBlank() }
+    }
+
     /**
-     * Resuelve el input del usuario a un estudiante:
-     * - Si parece CÓDIGO: intenta documento por ID o whereEqualTo("id", code).
-     * - Si parece NOMBRE/APELLIDO: busca por prefijo en "apellidos" y "nombres" (ambos, máx 10 cada uno).
-     *   Si hay varios candidatos, muestra un diálogo para elegir.
+     * Resuelve un estudiante por código o nombre/apellido **dentro del grado**.
+     * - Si el input parece CÓDIGO: busca doc y valida que su 'grado' == grade.
+     * - Si es TEXTO: hace prefijo por apellidos/nombres y luego filtra por grade (cliente),
+     *   mostrando diálogo si hay varios candidatos.
      */
-    private fun resolveStudent(input: String, onResolved: (code: String, display: String) -> Unit) {
+    private fun resolveStudentWithinGrade(
+        input: String,
+        grade: String,
+        onResolved: (code: String, display: String) -> Unit
+    ) {
         val trimmed = input.trim()
 
-        // 1) Si es "código", buscamos directo
+        // 1) Código
         if (codeRegex.matcher(trimmed).matches()) {
-            // intenta por documentId
+            // Intenta por docId
             db.collection("estudiantes").document(trimmed).get()
-                .addOnSuccessListener { doc ->
-                    if (doc.exists()) {
-                        val nombre = (doc.getString("apellidos") ?: "") + ", " + (doc.getString("nombres") ?: "")
-                        onResolved(trimmed, "$trimmed — $nombre".trim())
+                .addOnSuccessListener { d ->
+                    if (d.exists()) {
+                        val g = asGradeString(d.get("grado"))
+                        if (g == grade) {
+                            val nombre = "${d.getString("apellidos") ?: ""}, ${d.getString("nombres") ?: ""}".trim().trim(',')
+                            onResolved(trimmed, "$trimmed — $nombre")
+                        } else {
+                            binding.etStudentCode.error = "El código pertenece al grado $g, no a $grade."
+                        }
                     } else {
-                        // intenta por campo "id"
-                        db.collection("estudiantes")
-                            .whereEqualTo("id", trimmed)
-                            .limit(1)
-                            .get()
+                        // Intenta por campo 'id'
+                        db.collection("estudiantes").whereEqualTo("id", trimmed).limit(1).get()
                             .addOnSuccessListener { qs ->
-                                val d = qs.documents.firstOrNull()
-                                if (d != null) {
-                                    val code = d.getString("id") ?: trimmed
-                                    val nombre = (d.getString("apellidos") ?: "") + ", " + (d.getString("nombres") ?: "")
-                                    onResolved(code, "$code — $nombre".trim())
+                                val x = qs.documents.firstOrNull()
+                                if (x != null) {
+                                    val g = asGradeString(x.get("grado"))
+                                    if (g == grade) {
+                                        val code = x.getString("id") ?: trimmed
+                                        val nombre = "${x.getString("apellidos") ?: ""}, ${x.getString("nombres") ?: ""}".trim().trim(',')
+                                        onResolved(code, "$code — $nombre")
+                                    } else {
+                                        binding.etStudentCode.error = "El código pertenece al grado $g, no a $grade."
+                                    }
                                 } else {
-                                    binding.etStudentCode.error = "No se encontró el estudiante con código $trimmed"
+                                    binding.etStudentCode.error = "No se encontró estudiante con código $trimmed"
                                 }
                             }
                             .addOnFailureListener { e ->
@@ -138,68 +162,64 @@ class TeacherReportsFragment : Fragment(R.layout.fragment_teacher_reports) {
             return
         }
 
-        // 2) Caso nombre/apellido: búsqueda por PREFIJO (apellidos y nombres)
+        // 2) Nombre / Apellido (prefijo). Hacemos dos consultas y luego filtramos por grado del tutor en cliente.
         val prefix = trimmed.replace(Regex("\\s+"), " ").trim()
         if (prefix.length < 2) {
             binding.etStudentCode.error = "Escribe al menos 2 letras del nombre o apellido"
             binding.etStudentCode.requestFocus()
             return
         }
-
         val end = prefix + "\uf8ff"
+
         val qApe = db.collection("estudiantes")
             .orderBy("apellidos")
-            .startAt(prefix)
-            .endAt(end)
-            .limit(10)
+            .startAt(prefix).endAt(end).limit(15)
         val qNom = db.collection("estudiantes")
             .orderBy("nombres")
-            .startAt(prefix)
-            .endAt(end)
-            .limit(10)
+            .startAt(prefix).endAt(end).limit(15)
 
-        // Ejecuta ambas en paralelo y une resultados
         qApe.get().continueWithTask { apeSnap ->
             val apeDocs = apeSnap.result?.documents ?: emptyList()
             qNom.get().continueWith { nomSnap ->
                 val nomDocs = nomSnap.result?.documents ?: emptyList()
-                val merged = (apeDocs + nomDocs).distinctBy { it.id } // evita duplicados por docId
-                    .map { d ->
-                        val code = d.getString("id") ?: d.id
-                        val nombre = (d.getString("apellidos") ?: "") + ", " + (d.getString("nombres") ?: "")
-                        code to nombre.trim()
+                val merged = (apeDocs + nomDocs)
+                    .distinctBy { it.id }
+                    .mapNotNull { d ->
+                        val g = asGradeString(d.get("grado"))
+                        if (g == grade) {
+                            val code = d.getString("id") ?: d.id
+                            val nombre = "${d.getString("apellidos") ?: ""}, ${d.getString("nombres") ?: ""}".trim().trim(',')
+                            code to nombre
+                        } else null
                     }
                 merged
             }
         }.addOnSuccessListener { candidates ->
             if (candidates.isEmpty()) {
-                binding.etStudentCode.error = "No se encontraron estudiantes con \"$prefix\""
+                binding.etStudentCode.error = "Sin coincidencias en el grado $grade"
                 return@addOnSuccessListener
             }
             if (candidates.size == 1) {
                 val (code, nombre) = candidates.first()
                 onResolved(code, "$code — $nombre")
-                return@addOnSuccessListener
+            } else {
+                val labels = candidates.map { (c, n) -> "$c — $n" }.toTypedArray()
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Selecciona estudiante")
+                    .setItems(labels) { _, which ->
+                        val (code, nombre) = candidates[which]
+                        onResolved(code, "$code — $nombre")
+                    }
+                    .setNegativeButton("Cancelar", null)
+                    .show()
             }
-
-            // Mostrar diálogo para elegir
-            val labels = candidates.map { (c, n) -> "$c — $n" }.toTypedArray()
-            AlertDialog.Builder(requireContext())
-                .setTitle("Selecciona estudiante")
-                .setItems(labels) { _, which ->
-                    val (code, nombre) = candidates[which]
-                    onResolved(code, "$code — $nombre")
-                }
-                .setNegativeButton("Cancelar", null)
-                .show()
         }.addOnFailureListener { e ->
             Toast.makeText(requireContext(), "Error buscando estudiantes: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
-    // ================== Consulta de asistencias (Timestamp o String ES) ==================
+    // ================== Consulta de asistencias (dentro del rango) ==================
     private fun loadAttendanceByCodeAndRange(studentCode: String) {
-        // Limpia UI mientras carga
         setKpis(0, 0, 0)
         adapter.submit(emptyList())
 
@@ -219,7 +239,6 @@ class TeacherReportsFragment : Fragment(R.layout.fragment_teacher_reports) {
                         is String -> parseSpanishDateToLocalDate(raw)
                         else -> null
                     }
-
                     if (date != null && !date.isBefore(startDate) && !date.isAfter(endDate)) {
                         val status = when (estadoStr) {
                             "PUNTUAL", "PRESENTE" -> Status.PRESENTE
@@ -252,19 +271,21 @@ class TeacherReportsFragment : Fragment(R.layout.fragment_teacher_reports) {
             }
     }
 
-    // String ES -> LocalDate (toma solo la parte del día)
+    // "24 de octubre de 2025, 12:00:00 a.m. UTC-5" -> 24/10/2025
     private fun parseSpanishDateToLocalDate(fechaStr: String): LocalDate? {
-        val soloDia = fechaStr.substringBefore(",").trim() // "19 de octubre de 2025"
+        val soloDia = fechaStr.substringBefore(",").trim()
         val localeEs = Locale("es", "PE")
         val f1 = DateTimeFormatter.ofPattern("d 'de' MMMM 'de' uuuu", localeEs)
-        return try {
-            LocalDate.parse(soloDia, f1)
-        } catch (_: Exception) {
-            runCatching { LocalDate.parse(soloDia, DateTimeFormatter.ofPattern("dd/MM/uuuu")) }.getOrNull()
-        }
+        return runCatching { LocalDate.parse(soloDia, f1) }
+            .getOrElse { runCatching { LocalDate.parse(soloDia, DateTimeFormatter.ofPattern("dd/MM/uuuu")) }.getOrNull() }
     }
 
-    // ================== UI helpers ==================
+    private fun setKpis(asist: Int, falt: Int, tard: Int) {
+        binding.tvCountAsistencias.text = asist.toString()
+        binding.tvCountFaltas.text = falt.toString()
+        binding.tvCountTardanzas.text = tard.toString()
+    }
+
     private fun renderDates() {
         binding.etStartDate.setText(uiFormatter.format(startDate))
         binding.etEndDate.setText(uiFormatter.format(endDate))
@@ -288,11 +309,12 @@ class TeacherReportsFragment : Fragment(R.layout.fragment_teacher_reports) {
         ).show()
     }
 
-    private fun setKpis(asist: Int, falt: Int, tard: Int) {
-        binding.tvCountAsistencias.text = asist.toString()
-        binding.tvCountFaltas.text = falt.toString()
-        binding.tvCountTardanzas.text = tard.toString()
-    }
+    /** Convierte 'grado' (String o Number) a String "1","2",... */
+    private fun asGradeString(value: Any?): String? = when (value) {
+        is String -> value.trim()
+        is Number -> value.toInt().toString()
+        else -> value?.toString()?.trim()
+    }?.takeIf { it.isNotBlank() }
 
     override fun onDestroyView() {
         super.onDestroyView()
