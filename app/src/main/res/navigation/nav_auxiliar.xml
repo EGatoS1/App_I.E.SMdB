@@ -24,3 +24,4 @@
         android:name="com.example.app_iesmdb.AuxiliarScanFragment"
         android:label="Escanear QR" />
 </navigation>
+

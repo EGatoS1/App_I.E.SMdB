@@ -1,13 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- Título -->
     <TextView
-        android:layout_gravity="center"
-        android:text="Pantalla de Escaneo (placeholder)"
-        android:textStyle="bold"
-        android:textSize="18sp"
+        android:id="@+id/tvTitulo"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-</FrameLayout>
+        android:layout_height="wrap_content"
+        android:text="Asistencia"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Subtítulo -->
+    <TextView
+        android:id="@+id/tvSubtitulo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Escanear Código QR"
+        android:textSize="23sp"
+        android:textStyle="bold"
+        android:layout_marginTop="80dp"
+        app:layout_constraintTop_toBottomOf="@id/tvTitulo"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Descripción -->
+    <TextView
+        android:id="@+id/tvDsc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Coloque el código QR del estudiante dentro del\nmarco para registrar su asistencia"
+        android:layout_marginTop="30dp"
+        android:gravity="center"
+        app:layout_constraintTop_toBottomOf="@id/tvSubtitulo"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Marco de cámara (solo diseño por ahora) -->
+    <com.journeyapps.barcodescanner.DecoratedBarcodeView
+        android:id="@+id/barcodeScannerView"
+        android:layout_width="350dp"
+        android:layout_height="350dp"
+        android:layout_marginTop="20dp"
+        app:layout_constraintTop_toBottomOf="@id/tvDsc"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Texto de estado -->
+    <TextView
+        android:id="@+id/txtResultado"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Esperando escaneo..."
+        android:textSize="16sp"
+        android:gravity="center"
+        android:layout_marginTop="20dp"
+        android:textColor="#222222"
+        app:layout_constraintTop_toBottomOf="@id/barcodeScannerView"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+</androidx.constraintlayout.widget.ConstraintLayout>
