@@ -2,22 +2,26 @@
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootAux"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- NavHost exclusivo del Auxiliar -->
     <androidx.fragment.app.FragmentContainerView
-        android:id="@+id/nav_host_fragment_aux"
+        android:id="@+id/nav_host_fragment_auxiliar"
         android:name="androidx.navigation.fragment.NavHostFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:defaultNavHost="true"
-        app:navGraph="@navigation/nav_auxiliar" />
+        app:navGraph="@navigation/nav_auxiliar"
+        app:defaultNavHost="true" />
 
+    <!-- BottomNavigation exclusivo del Auxiliar -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomBarAux"
+        android:id="@+id/bottomBarAuxiliar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        app:menu="@menu/menu_auxiliar_bottom" />
-
+        app:menu="@menu/menu_auxiliar_bottom"
+        app:labelVisibilityMode="labeled"
+        app:layout_behavior="@string/hide_bottom_view_on_scroll_behavior"/>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
