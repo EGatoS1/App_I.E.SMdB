@@ -25,6 +25,12 @@
         android:label="Dashboard de Asistencia" />
 
     <fragment
+        android:id="@+id/usersFragment"
+        android:name="com.example.app_iesmdb.UsersFragment"
+        android:label="Usuarios" />
+
+
+    <fragment
         android:id="@+id/gradeDetailFragment"
         android:name="com.example.app_iesmdb.GradeDetailFragment"
         android:label="Detalle de Asistencia">
