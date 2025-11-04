@@ -25,7 +25,9 @@ class UsersFragment : Fragment(R.layout.fragment_users) {
 
         // Toolbar back
         view.findViewById<MaterialToolbar?>(R.id.toolbarUsers)?.apply {
-            setNavigationOnClickListener { requireActivity().onBackPressedDispatcher.onBackPressed() }
+            setNavigationOnClickListener {
+                requireActivity().onBackPressedDispatcher.onBackPressed()
+            }
         }
 
         rvUsers = view.findViewById(R.id.rvUsers)
@@ -56,7 +58,12 @@ class UsersFragment : Fragment(R.layout.fragment_users) {
                     val username = doc.getString("username") ?: return@mapNotNull null
                     val nombre = doc.getString("nombre") ?: ""
                     val apellido = doc.getString("apellido") ?: ""
-                    val role = doc.getString("role") ?: ""
+
+                    // 👇 Preferimos 'rol', pero aceptamos 'role' si existe
+                    val role = doc.getString("rol")
+                        ?: doc.getString("role")
+                        ?: ""
+
                     val grado = doc.getString("grado")
 
                     UserAccount(
@@ -72,7 +79,11 @@ class UsersFragment : Fragment(R.layout.fragment_users) {
                 adapter.submitList(list)
             }
             .addOnFailureListener { e ->
-                Toast.makeText(requireContext(), "Error cargando usuarios: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    requireContext(),
+                    "Error cargando usuarios: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
     }
 
@@ -106,9 +117,12 @@ class UsersFragment : Fragment(R.layout.fragment_users) {
                     )
                     updateUserInFirestore(updated)
                 } else {
-                    Toast.makeText(requireContext(), "Error: usuario nulo al editar", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "Error: usuario nulo al editar",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-
             }
         }
 
@@ -128,22 +142,35 @@ class UsersFragment : Fragment(R.layout.fragment_users) {
                     "username" to user.username,
                     "nombre" to user.nombre,
                     "apellido" to user.apellido,
-                    "role" to user.role,
+                    // 👇 Guardamos SIEMPRE en 'rol'
+                    "rol" to user.role,
                     "grado" to (user.grado ?: "")
                 )
 
                 db.collection("users").document(uid)
                     .set(data)
                     .addOnSuccessListener {
-                        Toast.makeText(requireContext(), "Usuario creado", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            requireContext(),
+                            "Usuario creado",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         loadUsers()
                     }
                     .addOnFailureListener { e ->
-                        Toast.makeText(requireContext(), "Error guardando en Firestore: ${e.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(
+                            requireContext(),
+                            "Error guardando en Firestore: ${e.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
             }
             .addOnFailureListener { e ->
-                Toast.makeText(requireContext(), "Error creando en Auth: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    requireContext(),
+                    "Error creando en Auth: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
     }
 
@@ -151,7 +178,11 @@ class UsersFragment : Fragment(R.layout.fragment_users) {
 
     private fun updateUserInFirestore(user: UserAccount) {
         if (user.uid.isBlank()) {
-            Toast.makeText(requireContext(), "UID vacío, no se puede actualizar", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                requireContext(),
+                "UID vacío, no se puede actualizar",
+                Toast.LENGTH_SHORT
+            ).show()
             return
         }
 
@@ -159,43 +190,62 @@ class UsersFragment : Fragment(R.layout.fragment_users) {
             "username" to user.username,
             "nombre" to user.nombre,
             "apellido" to user.apellido,
-            "role" to user.role,
+            // 👇 De nuevo, sólo 'rol'
+            "rol" to user.role,
             "grado" to (user.grado ?: "")
         )
 
         db.collection("users").document(user.uid)
             .update(data as Map<String, Any>)
             .addOnSuccessListener {
-                Toast.makeText(requireContext(), "Usuario actualizado", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    "Usuario actualizado",
+                    Toast.LENGTH_SHORT
+                ).show()
                 loadUsers()
             }
             .addOnFailureListener { e ->
-                Toast.makeText(requireContext(), "Error actualizando: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    requireContext(),
+                    "Error actualizando: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
     }
 
     // ======================= ELIMINAR (Firestore) =======================
 
     private fun confirmDeleteUser(user: UserAccount) {
-        // De momento, borramos directo sin diálogo de confirmación.
-        // Si quieres, luego le metemos un AlertDialog.
         deleteUserInFirestore(user)
     }
 
     private fun deleteUserInFirestore(user: UserAccount) {
         if (user.uid.isBlank()) {
-            Toast.makeText(requireContext(), "UID vacío, no se puede eliminar", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                requireContext(),
+                "UID vacío, no se puede eliminar",
+                Toast.LENGTH_SHORT
+            ).show()
             return
         }
 
         db.collection("users").document(user.uid)
             .delete()
             .addOnSuccessListener {
-                Toast.makeText(requireContext(), "Usuario eliminado (Firestore)", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    "Usuario eliminado (Firestore)",
+                    Toast.LENGTH_SHORT
+                ).show()
                 loadUsers()
             }
             .addOnFailureListener { e ->
-                Toast.makeText(requireContext(), "Error eliminando: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    requireContext(),
+                    "Error eliminando: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
     }
 }

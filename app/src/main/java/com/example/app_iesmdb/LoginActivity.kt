@@ -18,24 +18,20 @@ class LoginActivity : AppCompatActivity() {
     private val auth by lazy { FirebaseAuth.getInstance() }
     private val db by lazy { FirebaseFirestore.getInstance() }
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_login)
-        
-        // Ir directo al flujo del Director para probar UI sin login
-        if (resources.getBoolean(R.bool.auth_bypass)) {
 
+        // Bypass para pruebas (entra directo al director)
+        if (resources.getBoolean(R.bool.auth_bypass)) {
             val i = Intent(this, MainActivity::class.java)
-                .putExtra("dest_res_id", R.id.directorHomeFragment) // opcional: a qué pantalla ir
+                .putExtra("dest_res_id", R.id.directorHomeFragment)
             startActivity(i)
             finish()
             return
         }
 
-
-        // Mantén tu manejo de insets
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.login)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -55,45 +51,69 @@ class LoginActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val email = usernameToEmail(user) // convierte "usuario" -> "usuario@demo.local"
+            val email = usernameToEmail(user)
 
             auth.signInWithEmailAndPassword(email, pass)
-                .addOnSuccessListener {
-                    // Login OK: redirige al MainActivity creado por defecto
-                    // Login OK: ahora decidimos por rol en Firestore
-                    val uid = it.user!!.uid
-                    db.collection("users").document(uid).get()
+                .addOnSuccessListener { authResult ->
+                    val uid = authResult.user?.uid
+                    if (uid.isNullOrBlank()) {
+                        toast("Error interno (UID vacío)")
+                        auth.signOut()
+                        return@addOnSuccessListener
+                    }
+
+                    db.collection("users").document(uid)
+                        .get()
                         .addOnSuccessListener { doc ->
-                            // Acepta 'role' o 'rol' según como lo hayan guardado
-                            val role = (doc.getString("role") ?: doc.getString("rol") ?: "sin_rol").lowercase()
+                            // 1) Si NO existe el documento => cuenta deshabilitada / no configurada
+                            if (!doc.exists()) {
+                                toast("Tu cuenta no está configurada. Contacta al administrador.")
+                                auth.signOut()
+                                return@addOnSuccessListener
+                            }
+
+                            // 2) Leer rol
+                            val role = (doc.getString("role")
+                                ?: doc.getString("rol")
+                                ?: ""
+                                    ).lowercase()
+
                             Log.d("LOGIN_DEBUG", "Rol detectado: $role")
 
-                            Toast.makeText(this, "Rol detectado: $role", Toast.LENGTH_SHORT).show()
+                            if (role.isBlank()) {
+                                toast("Tu rol no está configurado correctamente. Contacta al administrador.")
+                                auth.signOut()
+                                return@addOnSuccessListener
+                            }
 
+                            // 3) Enrutar según rol
                             when (role) {
                                 "director", "administrativo" -> {
                                     startActivity(Intent(this, MainActivity::class.java))
+                                    finish()
                                 }
                                 "tutor", "profesor" -> {
                                     val grado = doc.getString("grado") ?: ""
-                                    startActivity(Intent(this, MainTeacherActivity::class.java).apply {
-                                        putExtra("GRADE", grado)
-                                    })
+                                    val intent = Intent(this, MainTeacherActivity::class.java)
+                                    intent.putExtra("GRADE", grado)
+                                    startActivity(intent)
+                                    finish()
                                 }
                                 "auxiliar" -> {
                                     startActivity(Intent(this, MainAuxiliarActivity::class.java))
+                                    finish()
                                 }
                                 else -> {
-                                    // Fallback seguro
-                                    startActivity(Intent(this, MainActivity::class.java))
+                                    // Rol desconocido -> bloquear
+                                    toast("Rol no permitido. Contacta al administrador.")
+                                    auth.signOut()
                                 }
                             }
-                            finish()
                         }
                         .addOnFailureListener { e ->
                             toast(e.message ?: "No se pudo leer el rol del usuario")
+                            auth.signOut()
                         }
-
                 }
                 .addOnFailureListener { e ->
                     toast(e.message ?: "Error al iniciar sesión")
@@ -102,7 +122,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun usernameToEmail(username: String) =
-        "${username}@demo.local" // usa el mismo dominio sintético que usaste al crear el usuario
+        "${username}@demo.local"   // mismo dominio sintético que usas al crear usuarios
 
     private fun toast(msg: String) =
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
