@@ -18,6 +18,10 @@ import java.util.Locale
 
 class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
 
+    // Pie chart
+    private lateinit var pieView: AttendancePieView
+
+
     // Firestore
     private val db by lazy { FirebaseFirestore.getInstance() }
 
@@ -55,6 +59,8 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
         tvLegendPresent = view.findViewById(R.id.tvLegendPresent)
         tvLegendLate = view.findViewById(R.id.tvLegendLate)
         tvLegendAbsent = view.findViewById(R.id.tvLegendAbsent)
+        pieView = view.findViewById(R.id.viewPieChart)
+
 
         barPresentViews = listOf(
             view.findViewById(R.id.bar1Present),
@@ -223,6 +229,9 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
             tvLegendPresent.text = "Asistencia (0%)"
             tvLegendLate.text = "Tardanza (0%)"
             tvLegendAbsent.text = "Ausencia (0%)"
+
+            // Pastel vacío
+            pieView.setValues(0f, 0f, 0f)
             return
         }
 
@@ -238,7 +247,11 @@ class DashboardFragment : Fragment(R.layout.fragment_dashboard) {
             String.format(Locale.getDefault(), "Tardanza (%.0f%%)", tPct)
         tvLegendAbsent.text =
             String.format(Locale.getDefault(), "Ausencia (%.0f%%)", fPct)
+
+        // 🔹 Actualizamos el pastel con los mismos porcentajes
+        pieView.setValues(pPct.toFloat(), tPct.toFloat(), fPct.toFloat())
     }
+
 
     /** Actualiza las barras apiladas de cada grado usando los contadores */
     private fun updateBars(gradesMap: Map<String, Counts>) {

@@ -112,12 +112,12 @@
                     android:paddingBottom="4dp">
 
                     <!-- Círculo del gráfico (placeholder, luego lo haremos dinámico) -->
-                    <View
+                    <com.example.app_iesmdb.AttendancePieView
                         android:id="@+id/viewPieChart"
                         android:layout_width="120dp"
                         android:layout_height="120dp"
-                        android:layout_marginEnd="16dp"
-                        android:background="@drawable/bg_pie_placeholder" />
+                        android:layout_marginEnd="16dp" />
+
 
                     <!-- Leyenda -->
                     <LinearLayout

@@ -19,5 +19,9 @@
     <color name="chip_falta_bg">#FFEBEE</color>     <!-- rojo claro -->
     <color name="chip_falta_text">#D32F2F</color>
 
+    <color name="kpi_present_green">#4CAF50</color>
+    <color name="kpi_late_yellow">#FFF59D</color>
+    <color name="kpi_absent_red">#EF9A9A</color>
+
 
 </resources>
