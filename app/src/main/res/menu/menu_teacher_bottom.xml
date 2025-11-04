@@ -3,7 +3,7 @@
     <item
         android:id="@+id/teacherCredentialsFragment"
         android:title="Credenciales"
-        android:icon="@drawable/ic_key_24" />
+        android:icon="@drawable/ic_person_24" />
     <item
         android:id="@+id/teacherHomeFragment"
         android:title="Inicio"

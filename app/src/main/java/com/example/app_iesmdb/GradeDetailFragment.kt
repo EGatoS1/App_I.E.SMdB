@@ -1,107 +1,263 @@
 package com.example.app_iesmdb
 
-import android.app.DatePickerDialog
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
+import android.widget.EditText
 import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.app_iesmdb.attendance.Attendance
-import com.example.app_iesmdb.attendance.AttendanceAdapter
-import com.example.app_iesmdb.attendance.Status
-import com.google.android.material.textfield.TextInputEditText
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestore
+import java.text.Normalizer
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class GradeDetailFragment : Fragment(R.layout.fragment_grade_detail) {
 
+    private val db by lazy { FirebaseFirestore.getInstance() }
+
     private lateinit var rv: RecyclerView
-    private lateinit var adapter: AttendanceAdapter
+    private lateinit var etSearch: EditText
+    private lateinit var tvP: TextView
+    private lateinit var tvT: TextView
+    private lateinit var tvF: TextView
 
-    private lateinit var etStart: TextInputEditText
-    private lateinit var etEnd: TextInputEditText
-    private lateinit var etCode: TextInputEditText
+    private lateinit var tvDate: TextView
+    private lateinit var btnPrev: TextView
+    private lateinit var btnNext: TextView
+    private val cal = Calendar.getInstance()
 
-    private lateinit var tvPresent: TextView
-    private lateinit var tvAbsent: TextView
-    private lateinit var tvLate: TextView
-    private lateinit var tvReportFor: TextView
+    private lateinit var adapter: TeacherStudentsAdapter
+    private var fullList: List<TeacherStudentUI> = emptyList()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Toolbar
-        val toolbar = view.findViewById<com.google.android.material.appbar.MaterialToolbar>(
-            R.id.toolbarGradeDetail
-        )
-        val gradeName = arguments?.getString("gradeName") ?: "Quinto Grado"
-        toolbar.title = gradeName
-        toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
+        val toolbar = view.findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbarGradeDetail)
+        toolbar.setNavigationOnClickListener {
+            requireActivity().onBackPressedDispatcher.onBackPressed()
+        }
 
-        etStart = view.findViewById(R.id.etStartDate)
-        etEnd = view.findViewById(R.id.etEndDate)
-        etCode = view.findViewById(R.id.etCode)
+        // 1) SIEMPRE inicializamos las vistas primero
+        rv = view.findViewById(R.id.rvStudents)
+        etSearch = view.findViewById(R.id.etSearchCode)
+        tvP = view.findViewById(R.id.tvCountPresent)
+        tvT = view.findViewById(R.id.tvCountLate)
+        tvF = view.findViewById(R.id.tvCountAbsent)
 
-        tvPresent = view.findViewById(R.id.tvCountPresent)
-        tvAbsent  = view.findViewById(R.id.tvCountAbsent)
-        tvLate    = view.findViewById(R.id.tvCountLate)
-        tvReportFor = view.findViewById(R.id.tvReportFor)
+        tvDate = view.findViewById(R.id.tvSelectedDate)
+        btnPrev = view.findViewById(R.id.btnPrevDay)
+        btnNext = view.findViewById(R.id.btnNextDay)
 
-        rv = view.findViewById(R.id.rvAttendance)
-        adapter = AttendanceAdapter(mutableListOf())
         rv.layoutManager = LinearLayoutManager(requireContext())
+        adapter = TeacherStudentsAdapter()
         rv.adapter = adapter
 
-        // Dummy: valores iniciales
-        etStart.setText("01/07/2024")
-        etEnd.setText("15/07/2024")
-        etCode.setText("20230001")
-        tvReportFor.text = "Reporte para: 20230001"
+        // 2) Obtenemos el nombre de grado desde los argumentos
+        val gradeTitle: String = arguments?.getString("gradeName") ?: "Primer grado"
+        val gradeKey = gradeKeyFromTitle(gradeTitle)
 
-        // Carga inicial
-        val sample = fakeData()
-        renderStats(sample)
-        adapter.submit(sample)
+        if (gradeKey.isBlank()) {
+            Toast.makeText(requireContext(), "Grado no válido: $gradeTitle", Toast.LENGTH_SHORT).show()
+            return
+        }
 
-        // Date pickers (UI)
-        etStart.setOnClickListener { showDatePicker { etStart.setText(it) } }
-        etEnd.setOnClickListener   { showDatePicker { etEnd.setText(it) } }
+        // 3) Configuración de fecha inicial
+        updateDateLabel()
 
-        // Botón Consultar
-        view.findViewById<View>(R.id.btnConsultar).setOnClickListener {
-            // Por ahora recarga dummy filtrando simple por código (si coincide).
-            val code = etCode.text?.toString()?.trim().orEmpty()
-            val data = if (code.isBlank()) sample else sample.filter { it.studentCode == code }
-            renderStats(data)
-            adapter.submit(data)
-            if (code.isNotBlank()) tvReportFor.text = "Reporte para: $code"
+        // 4) Carga de datos (mock o real)
+        val useMock = resources.getBoolean(R.bool.use_mock_students)
+        if (useMock) {
+            fullList = mockStudentsData()
+            adapter.submitList(fullList)
+            updateCounters(fullList)
+        } else {
+            reloadForSelectedDate(gradeKey)
+        }
+
+        // 5) Filtro en vivo
+        attachSearchFilter()
+
+        // 6) Navegación de días
+        btnPrev.setOnClickListener {
+            cal.add(Calendar.DAY_OF_MONTH, -1)
+            updateDateLabel()
+            if (!useMock) reloadForSelectedDate(gradeKey)
+        }
+
+        btnNext.setOnClickListener {
+            cal.add(Calendar.DAY_OF_MONTH, +1)
+            updateDateLabel()
+            if (!useMock) reloadForSelectedDate(gradeKey)
         }
     }
 
-    private fun renderStats(list: List<Attendance>) {
-        val p = list.count { it.status == Status.PRESENTE }
-        val a = list.count { it.status == Status.AUSENTE }
-        val t = list.count { it.status == Status.TARDANZA }
-        tvPresent.text = p.toString()
-        tvAbsent.text  = a.toString()
-        tvLate.text    = t.toString()
+    // ====================== MAPEO NOMBRE → CLAVE BD ======================
+
+    private fun gradeKeyFromTitle(title: String): String {
+        return when (title.lowercase().trim()) {
+            "primer grado"  -> "1"
+            "segundo grado" -> "2"
+            "tercer grado"  -> "3"
+            "cuarto grado"  -> "4"
+            "quinto grado"  -> "5"
+            "sexto grado"   -> "6"
+            else            -> title
+        }
     }
 
-    private fun showDatePicker(onPick: (String)->Unit) {
-        val c = Calendar.getInstance()
-        DatePickerDialog(requireContext(),
-            { _, y, m, d -> onPick(String.format("%02d/%02d/%04d", d, m+1, y)) },
-            c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)
-        ).show()
+    // ====================== FECHA ======================
+
+    private fun selectedSpanishKey(): String {
+        val fmt = SimpleDateFormat("d 'de' MMMM 'de' yyyy", Locale("es","PE"))
+        return fmt.format(cal.time)
     }
 
-    // Datos de muestra (idénticos al mock)
-    private fun fakeData(): List<Attendance> = listOf(
-        Attendance("01/07/2024","20230001", Status.PRESENTE),
-        Attendance("02/07/2024","20230001", Status.PRESENTE),
-        Attendance("03/07/2024","20230001", Status.TARDANZA),
-        Attendance("04/07/2024","20230001", Status.AUSENTE),
-        Attendance("05/07/2024","20230001", Status.PRESENTE)
+    private fun updateDateLabel() {
+        tvDate.text = selectedSpanishKey()
+    }
+
+    private fun reloadForSelectedDate(gradeKey: String) {
+        loadStudentsAndDateAttendance(gradeKey, cal)
+    }
+
+    // ====================== CARGA DE DATOS ======================
+
+    private fun loadStudentsAndDateAttendance(gradeKey: String, selectedCal: Calendar) {
+        db.collection("estudiantes")
+            .whereEqualTo("grado", gradeKey)
+            .get()
+            .addOnSuccessListener { qs ->
+                val students = qs.documents.map { d ->
+                    val code = d.getString("id") ?: d.id
+                    val nombres = d.getString("nombres") ?: ""
+                    val apellidos = d.getString("apellidos") ?: ""
+                    val name = if (apellidos.isBlank() && nombres.isBlank()) "—" else "$apellidos, $nombres"
+                    code to TeacherStudentUI(code, name, "—")
+                }.toMap().toMutableMap()
+
+                db.collection("asistencias_globales")
+                    .whereEqualTo("grado", gradeKey)
+                    .get()
+                    .addOnSuccessListener { attSnap ->
+                        attSnap.documents.forEach { d ->
+                            val fechaAny = d.get("fecha")
+                            if (isSameDay(fechaAny, selectedCal)) {
+                                val code = d.getString("id_estudiante") ?: return@forEach
+                                val estadoCanon = canonicalStatus(d.getString("estado"))
+                                students[code] = students[code]?.copy(status = estadoCanon) ?: return@forEach
+                            }
+                        }
+
+                        fullList = students.values.sortedBy { it.code }
+                        adapter.submitList(fullList)
+                        updateCounters(fullList)
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(requireContext(), "Error asistencias: ${e.message}", Toast.LENGTH_SHORT).show()
+                        fullList = students.values.sortedBy { it.code }
+                        adapter.submitList(fullList)
+                        updateCounters(fullList)
+                    }
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(requireContext(), "Error estudiantes: ${e.message}", Toast.LENGTH_SHORT).show()
+                fullList = mockStudentsData()
+                adapter.submitList(fullList)
+                updateCounters(fullList)
+            }
+    }
+
+    // ====================== COMPARACIÓN DE FECHA ======================
+
+    private fun isSameDay(field: Any?, selectedCal: Calendar): Boolean {
+        try {
+            when (field) {
+                is Timestamp -> {
+                    val cal2 = Calendar.getInstance()
+                    cal2.time = field.toDate()
+                    return cal2.get(Calendar.YEAR) == selectedCal.get(Calendar.YEAR) &&
+                            cal2.get(Calendar.DAY_OF_YEAR) == selectedCal.get(Calendar.DAY_OF_YEAR)
+                }
+                is Date -> {
+                    val cal2 = Calendar.getInstance()
+                    cal2.time = field
+                    return cal2.get(Calendar.YEAR) == selectedCal.get(Calendar.YEAR) &&
+                            cal2.get(Calendar.DAY_OF_YEAR) == selectedCal.get(Calendar.DAY_OF_YEAR)
+                }
+                is String -> {
+                    val dayPart = field.substringBefore(",").trim().lowercase()
+                    val sel = SimpleDateFormat("d 'de' MMMM 'de' yyyy", Locale("es","PE"))
+                        .format(selectedCal.time)
+                        .lowercase()
+                    return dayPart == sel || field.trim().lowercase().startsWith(sel)
+                }
+                else -> return false
+            }
+        } catch (_: Exception) { }
+        return false
+    }
+
+    // ====================== BÚSQUEDA Y CONTADORES ======================
+
+    private fun attachSearchFilter() {
+        etSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                applyFilter(s?.toString().orEmpty())
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+    }
+
+    private fun applyFilter(query: String) {
+        val q = normalize(query.trim())
+        val filtered = if (q.isEmpty()) fullList else fullList.filter {
+            val code = normalize(it.code)
+            val name = normalize(it.name)
+            code.contains(q) || name.contains(q)
+        }
+        adapter.submitList(filtered)
+        updateCounters(filtered)
+    }
+
+    private fun updateCounters(list: List<TeacherStudentUI>) {
+        val p = list.count { it.status.equals("puntual", true) }
+        val t = list.count { it.status.equals("tarde", true) }
+        val f = list.count { it.status.equals("falta", true) }
+        tvP.text = p.toString()
+        tvT.text = t.toString()
+        tvF.text = f.toString()
+    }
+
+    // ====================== HELPERS ======================
+
+    private fun canonicalStatus(raw: String?): String {
+        val r = (raw ?: "—").trim().lowercase()
+        val map = mapOf(
+            "puntual" to "puntual", "presente" to "puntual", "present" to "puntual", "on_time" to "puntual",
+            "tarde" to "tarde", "tardanza" to "tarde", "late" to "tarde",
+            "falta" to "falta", "ausente" to "falta", "absent" to "falta"
+        )
+        return map[r] ?: "—"
+    }
+
+    private fun normalize(s: String): String {
+        val tmp = Normalizer.normalize(s.lowercase(), Normalizer.Form.NFD)
+        return tmp.replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+    }
+
+    private fun mockStudentsData() = listOf(
+        TeacherStudentUI("20230001", "Linares, Marco José", "puntual"),
+        TeacherStudentUI("20230002", "Pérez, Ana María", "tarde"),
+        TeacherStudentUI("20230003", "Gómez, Luis", "falta"),
+        TeacherStudentUI("20230004", "Quispe, Rocío", "puntual"),
+        TeacherStudentUI("20230005", "Torres, Diego", "puntual"),
     )
 }
