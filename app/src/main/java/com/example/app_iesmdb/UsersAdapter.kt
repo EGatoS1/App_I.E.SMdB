@@ -35,8 +35,8 @@ class UsersAdapter(
             // Icono según rol (ajusta los drawables si quieres algo más bonito)
             val iconRes = when (user.role) {
                 UserConstants.ROLE_ADMIN -> R.drawable.ic_person_24
-                UserConstants.ROLE_TUTOR -> R.drawable.ic_list_24
-                UserConstants.ROLE_AUX -> R.drawable.ic_qr_scanner_24
+                UserConstants.ROLE_TUTOR -> R.drawable.ic_person_24
+                UserConstants.ROLE_AUX -> R.drawable.ic_person_24
                 else -> R.drawable.ic_person_24
             }
             imgRole.setImageResource(iconRes)
