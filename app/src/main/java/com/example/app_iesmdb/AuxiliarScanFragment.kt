@@ -20,6 +20,7 @@ import com.journeyapps.barcodescanner.BarcodeCallback
 import com.journeyapps.barcodescanner.BarcodeResult
 import com.journeyapps.barcodescanner.DecoratedBarcodeView
 import org.json.JSONObject
+import java.util.Calendar   // 👈 NUEVO IMPORT
 import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
 
@@ -93,16 +94,21 @@ class AuxiliarScanFragment : Fragment() {
                         }
                     } else {
                         requireActivity().runOnUiThread {
-                            Toast.makeText(requireContext(),
+                            Toast.makeText(
+                                requireContext(),
                                 "⚠️ Estudiante no encontrado o grado inválido",
-                                Toast.LENGTH_SHORT).show()
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                 }
             } catch (e: Exception) {
                 requireActivity().runOnUiThread {
-                    Toast.makeText(requireContext(),
-                        "⚠️ QR inválido o no encriptado", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "⚠️ QR inválido o no encriptado",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
@@ -143,14 +149,18 @@ class AuxiliarScanFragment : Fragment() {
                 if (!isAdded) return@registerAttendanceFirestore
                 requireActivity().runOnUiThread {
                     if (exito) {
-                        Toast.makeText(requireContext(),
+                        Toast.makeText(
+                            requireContext(),
                             "Asistencia registrada como puntual ✅",
-                            Toast.LENGTH_SHORT).show()
+                            Toast.LENGTH_SHORT
+                        ).show()
                         txtResultado.text = "Asistencia confirmada: $id ($grado)"
                     } else {
-                        Toast.makeText(requireContext(),
+                        Toast.makeText(
+                            requireContext(),
                             "⚠️ No se pudo registrar la asistencia",
-                            Toast.LENGTH_SHORT).show()
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                     barcodeView.resume()
                 }
@@ -164,14 +174,18 @@ class AuxiliarScanFragment : Fragment() {
                 if (!isAdded) return@registerAttendanceFirestore
                 requireActivity().runOnUiThread {
                     if (exito) {
-                        Toast.makeText(requireContext(),
+                        Toast.makeText(
+                            requireContext(),
                             "Asistencia registrada como tarde ⏰",
-                            Toast.LENGTH_SHORT).show()
+                            Toast.LENGTH_SHORT
+                        ).show()
                         txtResultado.text = "Asistencia registrada como tarde ⏰"
                     } else {
-                        Toast.makeText(requireContext(),
+                        Toast.makeText(
+                            requireContext(),
                             "⚠️ No se pudo registrar la asistencia",
-                            Toast.LENGTH_SHORT).show()
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                     barcodeView.resume()
                 }
@@ -202,23 +216,69 @@ class AuxiliarScanFragment : Fragment() {
             }
     }
 
+    /**
+     * Guarda la asistencia de HOY:
+     * - Si ya hay un registro hoy para ese estudiante → lo ACTUALIZA.
+     * - Si no hay → crea uno nuevo.
+     */
     private fun registerAttendanceFirestore(
         id: String,
         grado: String,
         estado: String,
         callback: (Boolean) -> Unit
     ) {
-        val attendaceMap = hashMapOf(
-            "id_estudiante" to id,
-            "grado" to grado,
-            "estado" to estado,
-            "fecha" to Timestamp.now()
-        )
-        db.collection("asistencias_globales")
-            .add(attendaceMap)
-            .addOnSuccessListener { callback(true) }
+        val col = db.collection("asistencias_globales")
+
+        // Calculamos el rango de HOY (misma lógica que usas en AuxiliarHomeFragment)
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val start = Timestamp(cal.time)
+        cal.add(Calendar.DAY_OF_MONTH, 1)
+        val end = Timestamp(cal.time)
+
+        col.whereEqualTo("id_estudiante", id)
+            .whereGreaterThanOrEqualTo("fecha", start)
+            .whereLessThan("fecha", end)
+            .get()
+            .addOnSuccessListener { snap ->
+                val nowTs = Timestamp.now()
+
+                if (!snap.isEmpty) {
+                    // Ya hay un registro hoy → ACTUALIZAMOS el primero
+                    val docRef = snap.documents.first().reference
+                    docRef.update(
+                        mapOf(
+                            "estado" to estado,
+                            "grado" to grado,
+                            "fecha" to nowTs
+                        )
+                    )
+                        .addOnSuccessListener { callback(true) }
+                        .addOnFailureListener { e ->
+                            Log.e("FIRESTORE", "Error actualizando asistencia: ${e.message}")
+                            callback(false)
+                        }
+                } else {
+                    // No hay registro hoy → creamos uno nuevo
+                    val data = hashMapOf(
+                        "id_estudiante" to id,
+                        "grado" to grado,
+                        "estado" to estado,
+                        "fecha" to nowTs
+                    )
+                    col.add(data)
+                        .addOnSuccessListener { callback(true) }
+                        .addOnFailureListener { e ->
+                            Log.e("FIRESTORE", "Error registrando asistencia: ${e.message}")
+                            callback(false)
+                        }
+                }
+            }
             .addOnFailureListener { e ->
-                Log.e("FIRESTORE", "Error registrando asistencia: ${e.message}")
+                Log.e("FIRESTORE", "Error consultando asistencia previa: ${e.message}")
                 callback(false)
             }
     }
